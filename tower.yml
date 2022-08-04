@@ -1,0 +1,3 @@
+reports:
+    "*.csv"
+        display: "datasets"
