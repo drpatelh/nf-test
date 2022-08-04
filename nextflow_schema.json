@@ -1,0 +1,38 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema",
+    "$id": "https://raw.githubusercontent.com/ScaleBio/nf-test/master/nextflow_schema.json",
+    "title": "ScaleBio Nextflow Test",
+    "description": "",
+    "type": "object",
+    "definitions": {
+        "input_output_options": {
+            "title": "Input/output options",
+            "type": "object",
+            "fa_icon": "fas fa-terminal",
+            "description": "Define where the pipeline should find input data and save output data.",
+            "properties": {
+                "samples": {
+                    "type": "string",
+                    "format": "file-path",
+                    "mimetype": "text/csv",
+                    "pattern": "^\\S+\\.csv$",
+                    "description": "Csv file describing all samples in the analysis run (required!)",
+                    "fa_icon": "fas fa-file-csv"
+                },
+                "outDir": {
+                    "type": "string",
+                    "description": "Name of the output directory for workflow results",
+		    "format": "directory-path"
+                }
+            },
+            "required": [
+                "samples", "outDir"
+            ]
+        }
+    },
+    "allOf": [
+        {
+            "$ref": "#/definitions/input_output_options"
+        }
+    ]
+}
