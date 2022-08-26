@@ -1,0 +1,28 @@
+name: archrEnv
+channels:
+  - conda-forge
+  - bioconda
+  - defaults
+dependencies:
+  - python=3.8.12
+  - bioconda::bioconductor-annotationhub
+  - bioconda::bioconductor-bsgenome
+  - bioconda::bioconductor-genomicfeatures
+  - bioconda::bioconductor-singlecellexperiment
+  - bioconda::bioconductor-bsgenome.hsapiens.ncbi.grch38
+  - bioconda::bioconductor-bsgenome.hsapiens.ucsc.hg38
+  - bioconda::bioconductor-org.hs.eg.db
+  - bioconda::r-harmony
+  - conda-forge::r-base=4.1.2                                                     
+  - conda-forge::r-devtools=2.4.3
+  - conda-forge::r-yaml
+  - conda-forge::r-cairo
+  - conda-forge::r-magick
+  - conda-forge::r-seurat
+  - conda-forge::r-dplyr
+  - conda-forge::r-ggplot2
+  - conda-forge::r-argparse
+  - conda-forge::r-glue
+  - conda-forge::r-biocmanager
+  - conda-forge::parallel
+

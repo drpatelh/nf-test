@@ -1,0 +1,55 @@
+{
+    "$schema": "http://json-schema.org/draft-06/schema#",
+    "$ref": "#/definitions/Welcome7",
+    "definitions": {
+        "Welcome7": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+                "minUniqueReads": {
+                    "type": "integer"
+                },
+                "backgroundRatio": {
+                    "type": "number"
+                },
+                "topPercentCells": {
+                    "type": "integer"
+                },
+                "minimumTSS": {
+                    "type": "integer"
+                },
+                "minimumFragments": {
+                    "type": "integer"
+                },
+                "LSI_Iterations": {
+                    "type": "integer"
+                },
+                "maxClusters": {
+                    "type": "integer"
+                },
+                "nNeighbors": {
+                    "type": "integer"
+                },
+                "plotUMAP": {
+                    "type": "boolean"
+                },
+                "getMarkerGenes": {
+                    "type": "boolean"
+                }
+            },
+            "required": [
+                "LSI_Iterations",
+                "backgroundRatio",
+                "getMarkerGenes",
+                "maxClusters",
+                "minUniqueReads",
+                "minimumFragments",
+                "minimumTSS",
+                "nNeighbors",
+                "plotUMAP",
+                "topPercentCells"
+            ],
+            "title": "Welcome7"
+        }
+    }
+}

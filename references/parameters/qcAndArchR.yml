@@ -1,0 +1,35 @@
+## *** QC-FILTERING PARAMS ***: 
+# Minimum number of unique reads passing cells must have 
+minUniqueReads: 100
+# Proportion of  of total reads expected to be background. (Between 0 and 1) 
+backgroundRatio: 0.02
+# Top Percent of Cells which will be used to calculate QC metric thresholds (from 0-100)
+topPercentCells: 10
+
+## *** ARCHR ANALYSIS PARAMS ***: 
+## .ARROW CREATION PARAMS 
+# Minimum TSS enrichment score (as defined by ArchR) passing cells must have 
+minimumTSS:  1
+# Minimum Fragments 
+minimumFragments: 0
+
+## DIMENSIONALITY REDUCTION PARAMS 
+#  Number of iterations of LSI to be run during dimensionality reduction (on TileMatrix)
+LSI_Iterations: 2
+
+## CLUSTERING PARAMS 
+# Maximum number of clusters to group cells into 
+maxClusters: 2
+
+# Number of neighboring sample points used for UMAP. 
+# Larger values result in more global views while smaller values result in more local data 
+# being preserved from (2-100)
+nNeighbors: 50
+
+# Specifying whether to run certain aspects of automated analysis
+# Generate UMAP from dimensionality reduction output? 
+plotUMAP: true
+
+# Calculate marker genes from ArchR extrapolated genescores per cluster?
+getMarkerGenes: false
+
