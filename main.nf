@@ -121,30 +121,15 @@ script:
 """
 }
 
-process align {
-input: 
-	tuple(val(sample), path(reads)) // Input reads (fastq)
-output: 
-	tuple(val(sample), path("${sample}.bam"), emit: bam)
-
-script:
-"""
-	sleep 10
-	touch ${sample}.bam
-"""
-}
-
 process sampleReport {
 input: 
-	tuple(val(sample), path("metrics.json"))
+	val(sample)
 	path(samplesheet)
 	path(libJson)
 output:
 	path("${sample}.csv")
 publishDir "$params.outDir", mode: 'copy'
-errorStrategy 'ignore'
 """
-	#generateReport.py --sample ${sample} --samplesheet ${samplesheet} --libStruct ${libJson}
 	cat $samplesheet > ${sample}.csv
 """
 }
@@ -188,32 +173,6 @@ emit:
 	metrics = barcodeDemux.out.metrics
 }
 
-// Alignments, fragments, peaks and quantification
-workflow scATAC {
-take:
-	samples
-	sampleFqs // Fastq files for each sample for all reads (including index reads)
-	demuxMetrics
-main:
-	align(sampleFqs)
-	bams = align.out.bam
-	sampleDemuxMetrics = demuxMetrics.cross(samples.map{[it.fastqName,it.sample]}).map({[it[1][1], it[0][0], it[0][1]]})
-emit:
-	sampleDemuxMetrics = sampleDemuxMetrics
-}
-
-// QC, reporting and preliminary analysis
-workflow atacReport {
-take:
-	samples
-	demuxMetrics
-	samplesheet
-	libJson
-main:
-	demux = demuxMetrics.map({[it[0], it[2]]})
-	sampleReport(demux, samplesheet, libJson)
-}
-
 
 //// Main entry point
 // Run the workflow for one or multiple samples
@@ -238,6 +197,7 @@ workflow {
 		fqDir = samples.map{it.runFolder}.filter{it}.first().map{file(it,checkIfExists:true)}
 	}
 	inputReads(samples, samplesCsv, libJson, runDir, fqDir)
-	scATAC(samples, inputReads.out.fqs, inputReads.out.metrics)
-	atacReport(samples, scATAC.out.sampleDemuxMetrics, samplesCsv, libJson)
+	foo = inputReads.out.fqs.map{it[0]}
+	foo.dump()
+	sampleReport(foo, samplesCsv, libJson)
 }
