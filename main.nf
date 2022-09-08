@@ -190,12 +190,6 @@ main:
 	bclconvert(runDir, fqSheet)
 	fqs = fqDir.flatMap{file(it).listFiles()}.filter{it.name =~ /.fastq.gz$/}
 	fqs.dump(tag:'fqs')
-	if (params.trimFastq) {
-		readFqs = fqs.filter { it.getBaseName() =~ /_R\d_/ }
-		indexFqs = fqs.filter { it.getBaseName() =~ /_I\d_/ }
-		trimFq(readFqs)
-		fqs = trimFq.out.fastq.mix(indexFqs)
-	}
 	fqs = bclconvert.out.fastq.flatten().mix(fqs)
 	// Organize fastq files by sample
 	fqs.dump(tag:'fqs2')
@@ -224,7 +218,6 @@ take:
 	samples
 	sampleFqs // Fastq files for each sample for all reads (including index reads)
 	demuxMetrics
-	tssBed
 main:
 	align(genome.bowtie_index.getParent(), genome.bowtie_index.getName(), sampleFqs)
 	bams = align.out.bam
@@ -244,7 +237,6 @@ main:
 	demux = demuxMetrics.map({[it[0], it[2]]})
 	sampleReport(demux, samplesheet, libJson)
 }
-
 
 
 //// Main entry point
@@ -271,16 +263,7 @@ workflow {
 		fqDir = samples.map{it.runFolder}.filter{it}.first().map{file(it,checkIfExists:true)}
 	}
 	inputReads(samples, samplesCsv, libJson, runDir, fqDir)
-	// Reference Genome
 	genome = loadGenome(file(params.genome))
-	if ((genome.tss == null) && (genome.gtf != null)) {
-		makeTssRegions(genome.gtf)
-		tssBed = makeTssRegions.out
-	} else {
-		tssBed = genome.tss
-	}
-
-	//// scATAC Analysis and reporting
-	scATAC(samples, inputReads.out.fqs, inputReads.out.metrics, tssBed)
+	scATAC(samples, inputReads.out.fqs, inputReads.out.metrics)
 	atacReport(samples, scATAC.out.sampleDemuxMetrics, samplesCsv, libJson)
 }
