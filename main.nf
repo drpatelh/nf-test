@@ -22,17 +22,6 @@ def toIntOr0(str) {
 		return 0
 }
 
-// Reference genome files and parameters
-// Paths can be absolute or relative to location of json
-def loadGenome(json) {
-	def baseDir = json.getParent()
-	genome = loadJson(json)
-	genome.bowtie_index = expandPath(genome.bowtie_index, baseDir)
-	genome.gtf = expandPath(genome.gtf, baseDir)
-	genome.tss = expandPath(genome.tss, baseDir)
-	return genome
-}
-
 // Load per-sample read-counts from bcParser output
 def loadDemuxReadCounts(demuxMetrics) {
 	def jsonSlurper  = new JsonSlurper()
@@ -134,22 +123,14 @@ script:
 
 process align {
 input: 
-	path(indexDir) // Bowtie2 index directory
-	val(indexName) // Base-name of the bowtie2 index
 	tuple(val(sample), path(reads)) // Input reads (fastq)
 output: 
 	tuple(val(sample), path("${sample}.bam"), emit: bam)
-	path("*.bam.csi")
-	path("*.log")
-publishDir "$params.outDir/align", pattern: '*bam*'
-publishDir "$params.outDir/align", pattern: '*.log', mode:'copy'
 
 script:
-	index = "$indexDir/$indexName"
-	athreads = task.cpus - 1
-	sthreads = 4
 """
-	bowtie2 -p $athreads -x $index -1 ${reads[0]} -2 ${reads[1]} 2> ${sample}.log | samtools view -b | samtools sort --threads ${sthreads} --write-index -o ${sample}.bam
+	sleep 10
+	touch ${sample}.bam
 """
 }
 
@@ -179,14 +160,9 @@ take:
 	fqDir // Path to directory with input fastqs; empty if running from BCL 
 main:
 	runInfo = runDir.map{it.resolve("RunInfo.xml")}
-
-	if (params.fastqSamplesheet == null) {
-		fqIndex = expandPath(params.fastqIndex, file("${projectDir}/references/"))
-		makeBclConvertSamplesheet(samplesCsv, libJson, runInfo, fqIndex)
-		fqSheet = makeBclConvertSamplesheet.out
-	} else {
-		fqSheet = file(params.fastqSamplesheet)
-	}
+	fqIndex = expandPath(params.fastqIndex, file("${projectDir}/references/"))
+	makeBclConvertSamplesheet(samplesCsv, libJson, runInfo, fqIndex)
+	fqSheet = makeBclConvertSamplesheet.out
 	bclconvert(runDir, fqSheet)
 	fqs = fqDir.flatMap{file(it).listFiles()}.filter{it.name =~ /.fastq.gz$/}
 	fqs.dump(tag:'fqs')
@@ -219,7 +195,7 @@ take:
 	sampleFqs // Fastq files for each sample for all reads (including index reads)
 	demuxMetrics
 main:
-	align(genome.bowtie_index.getParent(), genome.bowtie_index.getName(), sampleFqs)
+	align(sampleFqs)
 	bams = align.out.bam
 	sampleDemuxMetrics = demuxMetrics.cross(samples.map{[it.fastqName,it.sample]}).map({[it[1][1], it[0][0], it[0][1]]})
 emit:
@@ -243,7 +219,6 @@ main:
 // Run the workflow for one or multiple samples
 // either from one runFolder or one / multiple sets of fastq files
 workflow {
-	Helper.initialise(workflow, params, log)
 	//// Inputs
 	samplesCsv = file(params.samples)
 	samples = Channel.fromPath(samplesCsv).splitCsv(header:true, strip:true)
@@ -263,7 +238,6 @@ workflow {
 		fqDir = samples.map{it.runFolder}.filter{it}.first().map{file(it,checkIfExists:true)}
 	}
 	inputReads(samples, samplesCsv, libJson, runDir, fqDir)
-	genome = loadGenome(file(params.genome))
 	scATAC(samples, inputReads.out.fqs, inputReads.out.metrics)
 	atacReport(samples, scATAC.out.sampleDemuxMetrics, samplesCsv, libJson)
 }
