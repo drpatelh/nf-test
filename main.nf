@@ -243,7 +243,6 @@ main:
 // Run the workflow for one or multiple samples
 // either from one runFolder or one / multiple sets of fastq files
 workflow {
-	Helper.initialise(workflow, params, log)
 	//// Inputs
 	samplesCsv = file(params.samples)
 	samples = Channel.fromPath(samplesCsv).splitCsv(header:true, strip:true)
