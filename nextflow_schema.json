@@ -19,28 +19,12 @@
                     "description": "Csv file describing all samples in the analysis run (required!)",
                     "fa_icon": "fas fa-file-csv"
                 },
-                "runFolder": {
-                    "type": "string",
-                    "description": "Top-level sequencer run directory (or null when using fastq input)",
-		    "format": "directory-path",
-                    "default": null
-                },
                 "fastqDir": {
                     "type": "string",
                     "description":"Directory containing pre-generated FASTQs files (or null when using runFolder input)",
 		    "format": "directory-path",
                     "default": null
                 },
-                "libStructure": {
-                    "type": "string",
-                    "format": "file-path",
-                    "mimetype": "text/json",
-                    "pattern": "^\\S+\\.json$",
-                    "description": "Json file describing library structure and index/barcode sequences",
-                    "fa_icon": "fas fa-file-json",
-		    "default": "lib-atacUniversal-a.json"
-                },
-
                 "outDir": {
                     "type": "string",
                     "description": "Name of the output directory for workflow results",

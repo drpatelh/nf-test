@@ -1,107 +1,10 @@
 nextflow.enable.dsl=2
-import groovy.json.JsonSlurper
-
-def loadJson(json) {
-	def jsonSlurper  = new JsonSlurper()
-	return jsonSlurper.parse( json )
-}
-
-// Create a 'file()' from string 'path'
-// 'path' could be null, a s3 URL, an absolute file-path or relative to 'baseDir'
-def expandPath(path, baseDir) {
-	if (path == null) { return null}
-	if (path =~ /^s3/) { return file(path)}
-	return baseDir.resolve(path)
-}
-
-// Return 0 for null or non-integer strings
-def toIntOr0(str) {
-	if ((str != null) && str.isInteger())
-		return str as int;
-	else
-		return 0
-}
-
-// Load per-sample read-counts from bcParser output
-def loadDemuxReadCounts(demuxMetrics) {
-	def jsonSlurper  = new JsonSlurper()
-	def counts = []
-		json = jsonSlurper.parse(demuxMetrics)
-		for (sample in json["samples"]) {
-			counts.add(tuple(sample.value["name"], sample.value["reads"][0]))
-		}
-	return counts
-}
-
-// Create a bcl-convert samplessheet for 'fastq_samples' in samples.json
-process makeBclConvertSamplesheet {
-input: 
-	path(samplesCsv)
-	path(lib)
-	path(runinfo)
-	path(fqIndex)
-output: 
-	path("samplesheet.csv")
-publishDir "${params.outDir}/fastq", mode: 'copy'
-tag 'small'
-
-"""
-	bclConvertSheet.py $samplesCsv $lib $runinfo --fastqIndex $fqIndex > samplesheet.csv
-"""
-}
-
-// Make TSS Regions BED from gene annoation (GTF) if not already provided as input
-process makeTssRegions {
-input: path(gtf)
-output: path("*.bed")
-tag 'small'
-
-"""
-	tss_regions.py $gtf
-"""
-}
-
-/*Run bcl-convert, used when starting from a sequencing run-folder
-  Requires a separate bcl-convert samplesheet*/
-process bclconvert {
-input: 
-	path(run)
-	path(samplesheet)
-output: 
-	path("fastq/*fastq.gz"), emit: fastq
-	path("fastq/Reports"), emit: stats
-publishDir "${params.outDir}/", pattern: 'fastq/Reports/*', mode: 'copy'
-publishDir "${params.outDir}/", pattern: 'fastq/*.fastq.gz'
-
-script:
-	pthreads = ((task.cpus-4)/3).round()
-"""
-	bcl-convert --sample-sheet $samplesheet --bcl-num-conversion-threads $pthreads --bcl-num-compression-threads $pthreads --bcl-num-decompression-threads $pthreads --bcl-input-directory $run  --output-directory fastq
-"""
-}
-
-/*Remove adapter sequences from ends of reads
- Run for fastq input only; otherwise adapters should be removed during bcl-convert*/
-process trimFq {
-input:
-	path(fastq)
-output: 
-	path("trimmed/${basename}.fastq.gz"), emit: fastq
-	path("trimmed/${basename}.trim_stats"), emit: stats
-
-script:
-	basename = fastq.getSimpleName()
-"""
-	mkdir trimmed
-	cutadapt -j${task.cpus} -a ${params.adapter} -o trimmed/${basename}.fastq.gz $fastq > trimmed/${basename}.trim_stats
-"""
-}
 
 // Run bcParser to extract and correct cell-barcodes
 // Optionally demuxes fastq files based on some barcodes
 process barcodeDemux {
 input:
-	path(sheet) // Samplesheet json
+	path(sheet) // Samples CSV
 	path(libDir) // Directory containing the library definition file (barcode sequence lists are loaded from here)
 	val(libName) // Filename of the library definition file
 	tuple(val(fqName), path(fqFiles)) // Input fastq file
@@ -130,36 +33,24 @@ output:
 	path("${sample}.csv")
 publishDir "$params.outDir", mode: 'copy'
 """
-	cat $samplesheet > ${sample}.csv
+	cat $samplesheet $libJson > ${sample}.csv
 """
 }
 
-//// Sub-Workflows
-// Fastq generation, trimming, QC, barcode extraction and sample demux
 workflow inputReads {
 take:
 	samples // samples.csv parsed into a channel
 	samplesCsv // samples.csv file
 	libJson // library definition json
-	runDir // Path to sequencing run-folder (BCLs); empty if running from fastq input
 	fqDir // Path to directory with input fastqs; empty if running from BCL 
 main:
-	runInfo = runDir.map{it.resolve("RunInfo.xml")}
-	fqIndex = expandPath(params.fastqIndex, file("${projectDir}/references/"))
-	makeBclConvertSamplesheet(samplesCsv, libJson, runInfo, fqIndex)
-	fqSheet = makeBclConvertSamplesheet.out
-	bclconvert(runDir, fqSheet)
 	fqs = fqDir.flatMap{file(it).listFiles()}.filter{it.name =~ /.fastq.gz$/}
-	fqs.dump(tag:'fqs')
-	fqs = bclconvert.out.fastq.flatten().mix(fqs)
 	// Organize fastq files by sample
-	fqs.dump(tag:'fqs2')
 	fqFiles = fqs.map { file ->
 		def ns = file.getName().toString().tokenize('_')
 		return tuple(ns.get(0), file)
 	}.groupTuple()
 	fqSamples = samples.map({it.fastqName}).unique().join(fqFiles)
-	fqSamples.dump(tag:'fqSamples')
 
 	// Process cell-barcodes and (optionally) split fastqs into samples based on tagmentation barcode
 	barcodeDemux(samplesCsv, libJson.getParent(), libJson.getName(), fqSamples)
@@ -167,37 +58,18 @@ main:
 		def ns = file.getName().toString().tokenize('_')
 		return tuple(ns.get(0), file)
 	}.groupTuple(size:2)
-	demuxFqs.dump(tag:'demuxFqs')
 emit:
 	fqs = demuxFqs
 	metrics = barcodeDemux.out.metrics
 }
 
 
-//// Main entry point
-// Run the workflow for one or multiple samples
-// either from one runFolder or one / multiple sets of fastq files
 workflow {
-	//// Inputs
 	samplesCsv = file(params.samples)
 	samples = Channel.fromPath(samplesCsv).splitCsv(header:true, strip:true)
-	samples.dump(tag:'samples')
-	libJson = expandPath(params.libStructure, file("${projectDir}/references/"))
-	// Input reads from runfolder xor fastq directory
-	// runDir or fqDir can either be set as parameter or as a column in samples.csv
-	if (params.runFolder) {
-		runDir = Channel.fromPath(params.runFolder, checkIfExists:true)
-		fqDir = Channel.empty()
-	} else if (params.fastqDir) {
-		fqDir = Channel.fromPath(params.fastqDir, checkIfExists:true)
-		runDir = Channel.empty()
-	} else {
-		//todo should ensure only one of the two is set
-		runDir = samples.map{it.runFolder}.filter{it}.first().map{file(it,checkIfExists:true)}
-		fqDir = samples.map{it.runFolder}.filter{it}.first().map{file(it,checkIfExists:true)}
-	}
-	inputReads(samples, samplesCsv, libJson, runDir, fqDir)
+	libJson = file(params.libStructure)
+	fqDir = Channel.fromPath(params.fastqDir, checkIfExists:true)
+	inputReads(samples, samplesCsv, libJson, fqDir)
 	foo = inputReads.out.fqs.map{it[0]}
-	foo.dump()
 	sampleReport(foo, samplesCsv, libJson)
 }
