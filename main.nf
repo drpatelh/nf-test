@@ -52,7 +52,6 @@ process sampleReport {
 
 workflow inputReads {
 	take:
-	samples // samples.csv parsed into a channel
 	samplesCsv // samples.csv file
 	libJson // library definition json
 	fqDir // Path to directory with input fastqs; empty if running from BCL 
@@ -60,7 +59,6 @@ workflow inputReads {
 	main:
 	// Get list of FastQ files
 	fqDir
-		.flatMap { file(it).listFiles() }
 		.filter { it.name =~ /.fastq.gz$/ }
 		.set { fqs }
 
@@ -73,7 +71,9 @@ workflow inputReads {
 		.groupTuple()
 		.set { fqFiles }
 	 
-	samples
+	Channel
+		.fromPath(samplesCsv)
+		.splitCsv(header:true, strip:true)
 		.map({ it.fastqName })
 		.unique()
 		.join(fqFiles)
@@ -99,11 +99,19 @@ workflow inputReads {
 }
 
 workflow {
+	// Initialise params
 	samplesCsv = file(params.samples)
-	samples = Channel.fromPath(samplesCsv).splitCsv(header:true, strip:true)
 	libJson = file(params.libStructure)
-	fqDir = Channel.fromPath(params.fastqDir, checkIfExists:true)
-	inputReads(samples, samplesCsv, libJson, fqDir)
-	foo = inputReads.out.fqs.map{it[0]}
+	fqDir = Channel.fromPath("${params.fastqDir}/*", checkIfExists:true)
+
+	// Run inputReads subworkflow
+	inputReads(samplesCsv, libJson, fqDir)
+	
+	// Run sampleReport subworkflow
+	inputReads
+		.out
+		.fqs
+		.map { it[0] }
+		.set { foo}
 	sampleReport(foo, samplesCsv, libJson)
 }
