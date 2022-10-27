@@ -77,7 +77,7 @@ workflow inputReads {
 		.set { fqSamples }
 
 	// Process cell-barcodes and (optionally) split fastqs into samples based on tagmentation barcode
-	barcodeDemux(file(samplesCsv), libJson.getParent(), libJson.getName(), fqSamples)
+	barcodeDemux(samplesCsv, libJson.getParent(), libJson.getName(), fqSamples)
 
 	barcodeDemux
 		.out
@@ -94,11 +94,12 @@ workflow inputReads {
 
 workflow {
 	// Initialise params
+	samplesCsv = file(params.samples)
 	libJson = file(params.libStructure)
 	fqDir = Channel.fromPath("${params.fastqDir}/*", checkIfExists:true)
 
 	// Run inputReads subworkflow
-	inputReads(params.samples, libJson, fqDir)
+	inputReads(samplesCsv, libJson, fqDir)
 	
 	// Run sampleReport subworkflow
 	inputReads
@@ -107,5 +108,5 @@ workflow {
 		.map { it[0] }
 		.set { foo }
 
-	sampleReport(foo, file(params.samples), libJson)
+	sampleReport(foo, samplesCsv, libJson)
 }
