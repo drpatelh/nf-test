@@ -107,5 +107,5 @@ workflow {
 		.map { it[0] }
 		.set { foo }
 
-	sampleReport(foo, samplesCsv, libJson)
+	sampleReport(foo, file(params.samples), libJson)
 }
