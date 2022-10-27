@@ -62,15 +62,12 @@ workflow inputReads {
 		.filter { it.name =~ /.fastq.gz$/ }
 		.set { fqs }
 
-	// Organize fastq files by sample
+	// Group fastq files by sample
 	fqs
-		.map { it ->
-				def ns = it.getName().toString().tokenize('_')
-				return tuple(ns.get(0), it)
-		}
+		.map { [ it.getName().toString().tokenize('_')[0], it ] }
 		.groupTuple()
 		.set { fqFiles }
-	 
+
 	Channel
 		.fromPath(samplesCsv)
 		.splitCsv(header:true, strip:true)
@@ -86,10 +83,7 @@ workflow inputReads {
 		.out
 		.fastq
 		.flatMap({it[1]})
-		.map { it ->
-			def ns = it.getName().toString().tokenize('_')
-			return tuple(ns.get(0), it)
-		}
+		.map { [ it.getName().toString().tokenize('_')[0], it ] }
 		.groupTuple(size:2)
 		.set { demuxFqs }
 
@@ -112,6 +106,7 @@ workflow {
 		.out
 		.fqs
 		.map { it[0] }
-		.set { foo}
+		.set { foo }
+
 	sampleReport(foo, samplesCsv, libJson)
 }
