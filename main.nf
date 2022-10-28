@@ -108,5 +108,7 @@ workflow {
 		.map { it[0] }
 		.set { foo }
 
+	foo.view { "Foo: $it" }
+
 	sampleReport(foo, samplesCsv, libJson)
 }
