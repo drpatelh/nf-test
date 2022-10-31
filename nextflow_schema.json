@@ -31,11 +31,6 @@
                     "format": "directory-path",
                     "default": "None"
                 },
-                "fqcount": {
-                    "type": "integer",
-                    "default": 16,
-                    "description": "Number of fastq files to load"
-                },
                 "libStructure": {
                     "type": "string"
                 }
