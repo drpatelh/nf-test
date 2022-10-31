@@ -1,3 +1,6 @@
+import java.nio.file.Files
+import org.apache.commons.io.FileUtils
+
 nextflow.enable.dsl=2
 
 // Run bcParser to extract and correct cell-barcodes
@@ -96,14 +99,12 @@ workflow {
 	// Initialise params
 	samplesCsv = file(params.samples)
 	libJson = file(params.libStructure)
-	Channel.fromPath("${params.fastqDir}/*", checkIfExists:true) 
-	| take(params.fqcount)
-	| set { fqDir }
+	fqDir = Channel.fromPath("${params.fastqDir}/*", checkIfExists:true)
 
 	// Run inputReads subworkflow
 	inputReads(samplesCsv, libJson, fqDir)
 
-	fqDir | view { "Fastq: $it"}
+	fqDir | view { "Using fastq: $it.name (${FileUtils.byteCountToDisplaySize(Files.size(it))})"}
 	
 	// Run sampleReport subworkflow
 	inputReads
