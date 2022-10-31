@@ -104,6 +104,8 @@ workflow {
 
 	// Run inputReads subworkflow
 	inputReads(samplesCsv, libJson, fqDir)
+
+	fqDir | view { "Fastq: $it"}
 	
 	// Run sampleReport subworkflow
 	inputReads
