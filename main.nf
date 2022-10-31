@@ -96,7 +96,7 @@ workflow {
 	// Initialise params
 	samplesCsv = file(params.samples)
 	libJson = file(params.libStructure)
-	fqDir = Channel.fromPath("${params.fastqDir}/*", checkIfExists:true)
+	fqDir = Channel.fromPath("${params.fastqDir}/*", checkIfExists:true) | take (params.fqcount)
 
 	// Run inputReads subworkflow
 	inputReads(samplesCsv, libJson, fqDir)

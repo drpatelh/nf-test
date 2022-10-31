@@ -19,27 +19,55 @@
                     "description": "Csv file describing all samples in the analysis run (required!)",
                     "fa_icon": "fas fa-file-csv"
                 },
-                "fastqDir": {
-                    "type": "string",
-                    "description":"Directory containing pre-generated FASTQs files (or null when using runFolder input)",
-		    "format": "directory-path",
-                    "default": null
-                },
                 "outDir": {
                     "type": "string",
                     "description": "Name of the output directory for workflow results",
-		    "format": "directory-path",
-		    "default": "out"
+                    "format": "directory-path",
+                    "default": "out"
+                },
+                "fastqDir": {
+                    "type": "string",
+                    "description": "Directory containing pre-generated FASTQs files (or null when using runFolder input)",
+                    "format": "directory-path",
+                    "default": "None"
+                },
+                "fqcount": {
+                    "type": "integer",
+                    "default": 16,
+                    "description": "Number of fastq files to load"
+                },
+                "libStructure": {
+                    "type": "string"
                 }
             },
             "required": [
-                "samples", "outDir"
+                "samples",
+                "outDir"
             ]
+        },
+        "computational_requirements": {
+            "title": "Computational requirements",
+            "type": "object",
+            "description": "",
+            "default": "",
+            "properties": {
+                "max_memory": {
+                    "type": "string",
+                    "default": "30.GB"
+                },
+                "max_cpus": {
+                    "type": "integer",
+                    "default": 32
+                }
+            }
         }
     },
     "allOf": [
         {
             "$ref": "#/definitions/input_output_options"
+        },
+        {
+            "$ref": "#/definitions/computational_requirements"
         }
     ]
 }
